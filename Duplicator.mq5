@@ -60,14 +60,15 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
         {
          while(i < clones)
            {
+            Print(position.Type(), position.TypeDescription());
             bool openSuccess = trade.PositionOpen(
                                   position.Symbol(),
-                                  position.Type() == POSITION_TYPE_BUY ? ORDER_TYPE_BUY : ORDER_TYPE_SELL,
+                                  (position.TypeDescription() == "buy") ? ORDER_TYPE_BUY : ORDER_TYPE_SELL,
                                   position.Volume(),
                                   position.PriceCurrent(),
                                   position.StopLoss(),
                                   position.TakeProfit(),
-                                  TRADE_COMMENT
+                                  IntegerToString(position.Ticket())
                                );
             if(openSuccess)
               {
