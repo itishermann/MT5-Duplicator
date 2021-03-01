@@ -5,15 +5,17 @@
 //+------------------------------------------------------------------+
 #include <Trade\Trade.mqh>
 #include <Trade\PositionInfo.mqh>
+#include <Trade\AccountInfo.mqh>
 
 #define TRADE_COMMENT "Placed by duplicator"
 //--- input parameters
-input ulong      slippage=5;
-input int    clones=5;
-input ulong    MAGIC_NUMBER=12345;
+input ulong    slippage=5;          // Authorized deviation
+input int      clones=5;            // Number of desired copies of a position
+input ulong    MAGIC_NUMBER=12345;  // Magic Number of EA
 
 CTrade trade;
 CPositionInfo position;
+CAccountInfo account;
 
 int numPos;
 
@@ -27,6 +29,7 @@ int OnInit()
    trade.SetExpertMagicNumber(MAGIC_NUMBER);
    trade.SetDeviationInPoints(slippage);
    numPos = PositionsTotal();
+   if(account.TradeMode() == ACCOUNT_TRADE_MODE_DEMO ){ trade.LogLevel(LOG_LEVEL_ALL); }
    return(INIT_SUCCEEDED);
   }
 
@@ -66,9 +69,9 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
          Print(position.Comment() == IntegerToString(ticket) , IntegerToString(position.Ticket()) == comment, position.Ticket(), comment, position.Comment(), ticket);
          if(position.Comment() == IntegerToString(ticket) || IntegerToString(position.Ticket()) == comment || position.Comment() == comment){
             if(trade.PositionModify(position.Ticket(), sl, tp)){
-               Print("Position #", position.Ticket()," edited ");
+               if(account.TradeMode() != ACCOUNT_TRADE_MODE_DEMO) Print("Position #", position.Ticket()," edited ");
             } else {
-               Print("Could not modify position #", position.Ticket());
+               if(account.TradeMode() != ACCOUNT_TRADE_MODE_DEMO) Print("Could not modify position #", position.Ticket());
                break;
             }
          }
@@ -91,11 +94,11 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
          if(openSuccess)
            {
             i++;
-            Print("Position #", position.Ticket()," cloned ", i, " times");
+            if(account.TradeMode() != ACCOUNT_TRADE_MODE_DEMO) Print("Position #", position.Ticket()," cloned ", i, " times");
            }
          else
            {
-            Print("Could not duplicate position #", position.Ticket());
+            if(account.TradeMode() != ACCOUNT_TRADE_MODE_DEMO) Print("Could not duplicate position #", position.Ticket());
             break;
            }
         }
@@ -116,18 +119,12 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       for(int i = PositionsTotal()-1; i >= 0; i--){
          Print("closed ticket :", closed_ticket, " closed comment: ", closed_comment, " closed magic: ", closed_magic);
          position.SelectByIndex(i);
-         if(
-         (IntegerToString(closed_ticket) == position.Comment() && position.Magic() == MAGIC_NUMBER) ||
-         (closed_comment != NULL &&
-            (closed_magic == position.Magic()) &&
-            (closed_comment == position.Comment() ||
-            closed_comment == IntegerToString(position.Ticket()))
-          )){
+         if(IntegerToString(closed_ticket) == position.Comment() && position.Magic() == MAGIC_NUMBER){
             ulong ticket = position.Ticket();
             if(trade.PositionClose(ticket, slippage)){
-               Print("Position #", ticket," closed successfully");
+               if(account.TradeMode() != ACCOUNT_TRADE_MODE_DEMO) Print("Position #", ticket," closed successfully");
             } else {
-               Print("Position #", ticket," not closed");
+               if(account.TradeMode() != ACCOUNT_TRADE_MODE_DEMO) Print("Position #", ticket," not closed");
             }
          }
       }
