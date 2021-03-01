@@ -47,47 +47,69 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
                         const MqlTradeRequest &request,
                         const MqlTradeResult &result)
   {
-   int i = 0;
    position.SelectByIndex(PositionsTotal()-1);
-   if(position.Magic() != MAGIC_NUMBER && trans.type == TRADE_TRANSACTION_DEAL_ADD && trans.deal != 0)
+   if(numPos == PositionsTotal())
      {
-      if(numPos == PositionsTotal())
+      numPos = PositionsTotal();
+      // Print("Trade edited", trans.deal, EnumToString(trans.type), EnumToString(trans.deal_type), EnumToString(trans.type));
+     }
+   if(numPos < PositionsTotal() && position.Magic() != MAGIC_NUMBER && trans.type == TRADE_TRANSACTION_DEAL_ADD && trans.deal != 0)
+     {
+      int i = 0;
+      while(i < clones)
         {
-         numPos = PositionsTotal();
-         Print("Trade edited");
-        }
-      if(numPos < PositionsTotal())
-        {
-         while(i < clones)
+         bool openSuccess = trade.PositionOpen(
+                               position.Symbol(),
+                               (position.TypeDescription() == "buy") ? ORDER_TYPE_BUY : ORDER_TYPE_SELL,
+                               position.Volume(),
+                               position.PriceCurrent(),
+                               position.StopLoss(),
+                               position.TakeProfit(),
+                               IntegerToString(position.Ticket())
+                            );
+         if(openSuccess)
            {
-            Print(position.Type(), position.TypeDescription());
-            bool openSuccess = trade.PositionOpen(
-                                  position.Symbol(),
-                                  (position.TypeDescription() == "buy") ? ORDER_TYPE_BUY : ORDER_TYPE_SELL,
-                                  position.Volume(),
-                                  position.PriceCurrent(),
-                                  position.StopLoss(),
-                                  position.TakeProfit(),
-                                  IntegerToString(position.Ticket())
-                               );
-            if(openSuccess)
-              {
-               i++;
-              }
-            else
-              {
-               Print("Could not duplicate position #", position.Ticket());
-               break;
-              }
+            i++;
            }
-         i = 0;
-         numPos = PositionsTotal();
+         else
+           {
+            Print("Could not duplicate position #", position.Ticket());
+            break;
+           }
         }
-      if(numPos > PositionsTotal())
-        {
-         numPos = PositionsTotal();
-         Print("Trade closed");
-        }
+      i = 0;
+      numPos = PositionsTotal();
+     }
+   if(numPos > PositionsTotal() && trans.deal != 0)
+     {
+      ulong closed_ticket = trans.position;
+      string closed_comment = request.comment;
+      int closed_magic = request.magic;
+      if(PositionSelectByTicket(closed_ticket)){
+         Print("inside");
+         PositionGetString(POSITION_COMMENT, closed_comment);
+         closed_magic = PositionGetInteger(POSITION_MAGIC);
+         Print("Pos ", closed_comment, " ", closed_magic);
+      }
+      for(int i = PositionsTotal()-1; i >= 0; i--){
+         Print("closed ticket :", closed_ticket, " closed comment: ", closed_comment, " closed magic: ", closed_magic);
+         position.SelectByIndex(i);
+         if(
+         (IntegerToString(closed_ticket) == position.Comment() && position.Magic() == MAGIC_NUMBER) ||
+         (closed_comment != NULL &&
+            (closed_magic == position.Magic()) &&
+            (closed_comment == position.Comment() ||
+            closed_comment == IntegerToString(position.Ticket()))
+          )){
+            ulong ticket = position.Ticket();
+            if(trade.PositionClose(ticket, slippage)){
+               Print("Position #", ticket," closed successfully");
+            } else {
+               Print("Position #", ticket," not closed");
+            }
+         }
+      }
+      numPos = PositionsTotal();
      }
   }
 
