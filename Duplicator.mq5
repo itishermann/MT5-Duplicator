@@ -51,14 +51,20 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
      {// edited
       numPos = PositionsTotal();
       int positionIndex = getPositionIndexByTicket(trans.position);
-      position.SelectByIndex(positionIndex);
       ulong ticket = trans.position;
-      double sl = position.StopLoss();
-      double tp = position.TakeProfit();
-      string comment = position.Comment();
+      double sl=0, tp=0;
+      string comment="";
+      if(position.SelectByIndex(positionIndex)){
+         sl = position.StopLoss();
+         tp = position.TakeProfit();
+         comment = position.Comment();
+      } else {
+         Print("Cannot get edited position");
+      }
       for(int i = PositionsTotal() -1; i >= 0; i--){
          position.SelectByIndex(i);
-         if(position.Comment() == IntegerToString(ticket)){
+         Print(position.Comment() == IntegerToString(ticket) , IntegerToString(position.Ticket()) == comment, position.Ticket(), comment, position.Comment(), ticket);
+         if(position.Comment() == IntegerToString(ticket) || IntegerToString(position.Ticket()) == comment || position.Comment() == comment){
             if(trade.PositionModify(position.Ticket(), sl, tp)){
                Print("Position #", position.Ticket()," edited ");
             } else {
