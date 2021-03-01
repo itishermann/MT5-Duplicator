@@ -28,7 +28,6 @@ int OnInit()
    trade.SetDeviationInPoints(slippage);
    numPos = PositionsTotal();
    return(INIT_SUCCEEDED);
-
   }
 
 //+------------------------------------------------------------------+
@@ -48,13 +47,29 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
                         const MqlTradeResult &result)
   {
    position.SelectByIndex(PositionsTotal()-1);
-   if(numPos == PositionsTotal())
-     {
+   if(numPos == PositionsTotal() && trans.type == TRADE_TRANSACTION_POSITION)
+     {// edited
       numPos = PositionsTotal();
-      // Print("Trade edited", trans.deal, EnumToString(trans.type), EnumToString(trans.deal_type), EnumToString(trans.type));
+      int positionIndex = getPositionIndexByTicket(trans.position);
+      position.SelectByIndex(positionIndex);
+      ulong ticket = trans.position;
+      double sl = position.StopLoss();
+      double tp = position.TakeProfit();
+      string comment = position.Comment();
+      for(int i = PositionsTotal() -1; i >= 0; i--){
+         position.SelectByIndex(i);
+         if(position.Comment() == IntegerToString(ticket)){
+            if(trade.PositionModify(position.Ticket(), sl, tp)){
+               Print("Position #", position.Ticket()," edited ");
+            } else {
+               Print("Could not modify position #", position.Ticket());
+               break;
+            }
+         }
+      }
      }
    if(numPos < PositionsTotal() && position.Magic() != MAGIC_NUMBER && trans.type == TRADE_TRANSACTION_DEAL_ADD && trans.deal != 0)
-     {
+     {// new
       int i = 0;
       while(i < clones)
         {
@@ -70,6 +85,7 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
          if(openSuccess)
            {
             i++;
+            Print("Position #", position.Ticket()," cloned ", i, " times");
            }
          else
            {
@@ -81,7 +97,7 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
       numPos = PositionsTotal();
      }
    if(numPos > PositionsTotal() && trans.deal != 0)
-     {
+     {// deleted
       ulong closed_ticket = trans.position;
       string closed_comment = request.comment;
       int closed_magic = request.magic;
@@ -117,3 +133,12 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
 //|                                                                  |
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
+int getPositionIndexByTicket(ulong ticket){
+   for(int i = PositionsTotal() -1; i >= 0; i--){
+      position.SelectByIndex(i);
+      if(position.Ticket() == ticket){
+         return i;
+      }
+   }
+   return NULL;
+}
