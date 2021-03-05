@@ -7,8 +7,8 @@
 #include <Trade\PositionInfo.mqh>
 #include <Trade\AccountInfo.mqh>
 #include <Trade\HistoryOrderInfo.mqh>
-
-#define TRADE_COMMENT "Placed by duplicator"
+#include <Trade\OrderInfo.mqh>
+#include "utils.mqh"
 //--- input parameters
 input ulong    slippage=5;          // Authorized deviation
 input int      clones=5;            // Number of desired copies of a position
@@ -55,6 +55,46 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
                         const MqlTradeResult &result)
   {
    position.SelectByIndex(PositionsTotal()-1);
+   if(request.action == TRADE_ACTION_REMOVE)
+     {
+      Print("---------------------Start--------------------");
+      // Print(TransactionDescription(trans));
+      Print(OrdersTotal());
+      // Print(RequestDescription(request));
+      Print("---------------------End--------------------");
+     }
+   if(request.action == TRADE_ACTION_PENDING && request.magic != MAGIC_NUMBER)  //orders
+     {
+      int i = 0;
+      while(i < clones)
+        {
+         bool openSuccess = trade.OrderOpen(
+                               request.symbol,
+                               request.type,
+                               request.volume,
+                               request.stoplimit,
+                               request.price,
+                               request.sl,
+                               request.tp,
+                               request.type_time,
+                               request.expiration,
+                               IntegerToString(request.order)
+                            );
+         if(openSuccess)
+           {
+            i++;
+            if(account.TradeMode() != ACCOUNT_TRADE_MODE_DEMO)
+               Print("Order #", IntegerToString(request.order)," cloned ", i, " times");
+           }
+         else
+           {
+            if(account.TradeMode() != ACCOUNT_TRADE_MODE_DEMO)
+               Print("Could not duplicate order #", IntegerToString(request.order));
+            break;
+           }
+        }
+      i = 0;
+     }
    if(numPos == PositionsTotal() && trans.type == TRADE_TRANSACTION_POSITION)
      {
       // edited
